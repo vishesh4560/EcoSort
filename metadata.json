@@ -1,0 +1,7 @@
+{
+  "name": "EcoSort",
+  "description": "A comprehensive waste management platform that uses AI to identify and categorize waste, providing personalized recycling recommendations for a cleaner planet.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
