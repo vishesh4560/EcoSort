@@ -46,7 +46,6 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
     if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
       // @ts-ignore
       await window.aistudio.openSelectKey();
-      // Guidelines: Assume success to mitigate race condition
       setNeedsApiKey(false);
       setError(null);
       if (image) classifyWaste(image);
@@ -145,7 +144,6 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
 
       if (!base64Data) throw new Error("Invalid image data captured.");
 
-      // Create fresh instance per guidelines
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const response = await ai.models.generateContent({
@@ -184,7 +182,7 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
       setResult(data);
 
       if (user) {
-        db.saveScan({
+        await db.saveScan({
           item: data.item,
           category: data.category,
           confidence: data.confidence,

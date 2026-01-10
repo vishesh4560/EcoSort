@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Mail, Lock, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Mail, Lock, ArrowLeft, AlertCircle, Loader2 } from 'lucide-react';
 import { db } from '../services/db';
 import { User } from '../types';
 
@@ -14,8 +14,9 @@ const Login: React.FC<LoginProps> = ({ onToggleAuth, onBackHome, onSuccess }) =>
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -24,12 +25,19 @@ const Login: React.FC<LoginProps> = ({ onToggleAuth, onBackHome, onSuccess }) =>
       return;
     }
 
-    const user = db.findUserByEmail(email);
-    if (user && user.password === password) {
-      db.setCurrentUser(user);
-      onSuccess(user);
-    } else {
-      setError('Invalid email or password.');
+    setLoading(true);
+    try {
+      const user = await db.findUserByEmail(email);
+      if (user && user.password === password) {
+        db.setCurrentUser(user);
+        onSuccess(user);
+      } else {
+        setError('Invalid email or password.');
+      }
+    } catch (err: any) {
+      setError('Connection error. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -67,7 +75,8 @@ const Login: React.FC<LoginProps> = ({ onToggleAuth, onBackHome, onSuccess }) =>
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:border-green-500 transition-colors"
+                  disabled={loading}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:border-green-500 transition-colors disabled:opacity-50"
                 />
               </div>
             </div>
@@ -84,13 +93,18 @@ const Login: React.FC<LoginProps> = ({ onToggleAuth, onBackHome, onSuccess }) =>
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:border-green-500 transition-colors"
+                  disabled={loading}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:border-green-500 transition-colors disabled:opacity-50"
                 />
               </div>
             </div>
             
-            <button type="submit" className="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-bold transition-all shadow-lg shadow-green-900/20">
-              Sign In
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-bold transition-all shadow-lg shadow-green-900/20 flex items-center justify-center disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sign In'}
             </button>
           </form>
           

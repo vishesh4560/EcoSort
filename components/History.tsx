@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Clock, Trash2, Calendar, FileText } from 'lucide-react';
+import { ArrowLeft, Clock, Trash2, Calendar, FileText, Loader2 } from 'lucide-react';
 import { db } from '../services/db';
 import { SavedScan, User } from '../types';
 
@@ -11,10 +11,20 @@ interface HistoryProps {
 
 const History: React.FC<HistoryProps> = ({ user, onBackHome }) => {
   const [scans, setScans] = useState<SavedScan[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const userScans = db.getUserScans(user.id);
-    setScans(userScans);
+    const fetchHistory = async () => {
+      try {
+        const userScans = await db.getUserScans(user.id);
+        setScans(userScans);
+      } catch (err) {
+        console.error("Failed to fetch history:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHistory();
   }, [user.id]);
 
   const formatDate = (dateStr: string) => {
@@ -45,16 +55,21 @@ const History: React.FC<HistoryProps> = ({ user, onBackHome }) => {
 
           <div className="bg-gray-900 border border-gray-800 p-6 rounded-3xl flex items-center space-x-4">
             <div className="bg-green-500/10 p-3 rounded-2xl">
-              <Clock className="w-6 h-6 text-green-500" />
+              {loading ? <Loader2 className="w-6 h-6 text-green-500 animate-spin" /> : <Clock className="w-6 h-6 text-green-500" />}
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{scans.length}</p>
+              <p className="text-2xl font-bold text-white">{loading ? '...' : scans.length}</p>
               <p className="text-gray-400 text-sm">Total Scans</p>
             </div>
           </div>
         </div>
 
-        {scans.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-24">
+            <Loader2 className="w-12 h-12 text-green-500 animate-spin mb-4" />
+            <p className="text-gray-400">Retrieving cloud records...</p>
+          </div>
+        ) : scans.length === 0 ? (
           <div className="text-center py-24 bg-gray-900/30 border border-gray-800 border-dashed rounded-[40px]">
             <div className="bg-gray-800 p-6 rounded-full inline-block mb-6">
               <Trash2 className="w-12 h-12 text-gray-600" />

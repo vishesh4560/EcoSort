@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Mail, Lock, User as UserIcon, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, ArrowLeft, AlertCircle, Loader2 } from 'lucide-react';
 import { db } from '../services/db';
 import { User } from '../types';
 
@@ -15,8 +15,9 @@ const Register: React.FC<RegisterProps> = ({ onToggleAuth, onBackHome, onSuccess
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -25,22 +26,31 @@ const Register: React.FC<RegisterProps> = ({ onToggleAuth, onBackHome, onSuccess
       return;
     }
 
-    if (db.findUserByEmail(email)) {
-      setError('Email already exists.');
-      return;
+    setLoading(true);
+    try {
+      const existing = await db.findUserByEmail(email);
+      if (existing) {
+        setError('Email already exists.');
+        setLoading(false);
+        return;
+      }
+
+      const newUser: User = {
+        id: Math.random().toString(36).substr(2, 9),
+        name,
+        email,
+        password,
+        createdAt: new Date().toISOString()
+      };
+
+      await db.saveUser(newUser);
+      db.setCurrentUser(newUser);
+      onSuccess(newUser);
+    } catch (err: any) {
+      setError('Database error. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    const newUser: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      name,
-      email,
-      password,
-      createdAt: new Date().toISOString()
-    };
-
-    db.saveUser(newUser);
-    db.setCurrentUser(newUser);
-    onSuccess(newUser);
   };
 
   return (
@@ -77,7 +87,8 @@ const Register: React.FC<RegisterProps> = ({ onToggleAuth, onBackHome, onSuccess
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Jane Doe"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:border-green-500 transition-colors"
+                  disabled={loading}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:border-green-500 transition-colors disabled:opacity-50"
                 />
               </div>
             </div>
@@ -91,7 +102,8 @@ const Register: React.FC<RegisterProps> = ({ onToggleAuth, onBackHome, onSuccess
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:border-green-500 transition-colors"
+                  disabled={loading}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:border-green-500 transition-colors disabled:opacity-50"
                 />
               </div>
             </div>
@@ -105,13 +117,18 @@ const Register: React.FC<RegisterProps> = ({ onToggleAuth, onBackHome, onSuccess
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Min. 8 characters"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:border-green-500 transition-colors"
+                  disabled={loading}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:border-green-500 transition-colors disabled:opacity-50"
                 />
               </div>
             </div>
             
-            <button type="submit" className="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-bold transition-all shadow-lg shadow-green-900/20">
-              Create Account
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-bold transition-all shadow-lg shadow-green-900/20 flex items-center justify-center disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Create Account'}
             </button>
           </form>
           

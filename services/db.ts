@@ -1,28 +1,34 @@
 
 import { User, SavedScan } from '../types';
+import { supabase } from './supabase';
 
-const USERS_KEY = 'ecosort_users';
-const SCANS_KEY = 'ecosort_scans';
 const SESSION_KEY = 'ecosort_session';
 
 export const db = {
   // User Operations
-  getUsers: (): User[] => {
-    const data = localStorage.getItem(USERS_KEY);
-    return data ? JSON.parse(data) : [];
+  saveUser: async (user: User) => {
+    const { data, error } = await supabase
+      .from('users')
+      .insert([user])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   },
 
-  saveUser: (user: User) => {
-    const users = db.getUsers();
-    users.push(user);
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  findUserByEmail: async (email: string): Promise<User | null> => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "no rows returned"
+    return data;
   },
 
-  findUserByEmail: (email: string): User | undefined => {
-    return db.getUsers().find(u => u.email === email);
-  },
-
-  // Session Operations
+  // Session Operations (Keep local for fast UI state)
   setCurrentUser: (user: User | null) => {
     if (user) {
       localStorage.setItem(SESSION_KEY, JSON.stringify(user));
@@ -37,24 +43,31 @@ export const db = {
   },
 
   // Scan Operations
-  saveScan: (scan: Omit<SavedScan, 'id' | 'timestamp'>) => {
-    const scans = db.getScans();
-    const newScan: SavedScan = {
+  saveScan: async (scan: Omit<SavedScan, 'id' | 'timestamp'>) => {
+    const newScan = {
       ...scan,
       id: Math.random().toString(36).substr(2, 9),
       timestamp: new Date().toISOString()
     };
-    scans.unshift(newScan);
-    localStorage.setItem(SCANS_KEY, JSON.stringify(scans));
-    return newScan;
+
+    const { data, error } = await supabase
+      .from('scans')
+      .insert([newScan])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   },
 
-  getScans: (): SavedScan[] => {
-    const data = localStorage.getItem(SCANS_KEY);
-    return data ? JSON.parse(data) : [];
-  },
-
-  getUserScans: (userId: string): SavedScan[] => {
-    return db.getScans().filter(s => s.userId === userId);
+  getUserScans: async (userId: string): Promise<SavedScan[]> => {
+    const { data, error } = await supabase
+      .from('scans')
+      .select('*')
+      .eq('userId', userId)
+      .order('timestamp', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
   }
 };
