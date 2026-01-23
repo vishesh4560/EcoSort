@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Camera as CameraIcon, Loader2, CheckCircle2, AlertCircle, X, Key } from 'lucide-react';
+import { Upload, Camera as CameraIcon, Loader2, CheckCircle2, AlertCircle, X, Key, Database } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { ClassificationResult, User } from '../types';
 import { db } from '../services/db';
@@ -17,6 +17,7 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [needsApiKey, setNeedsApiKey] = useState(false);
+  const [showDbFix, setShowDbFix] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -43,7 +44,7 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
 
   const handleOpenKeyDialog = async () => {
     // @ts-ignore
-    if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+    if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
       // @ts-ignore
       await window.aistudio.openSelectKey();
       setNeedsApiKey(false);
@@ -54,6 +55,7 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
 
   const startCamera = async () => {
     setError(null);
+    setShowDbFix(false);
     setIsCameraOpen(true);
     setIsCameraReady(false);
     
@@ -136,6 +138,7 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
     setLoading(true);
     setResult(null);
     setError(null);
+    setShowDbFix(false);
 
     try {
       const mimeTypeMatch = dataUrl.match(/^data:(image\/[a-zA-Z]+);base64,/);
@@ -182,13 +185,20 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
       setResult(data);
 
       if (user) {
-        await db.saveScan({
-          item: data.item,
-          category: data.category,
-          confidence: data.confidence,
-          instructions: data.instructions,
-          userId: user.id
-        });
+        try {
+          await db.saveScan({
+            item: data.item,
+            category: data.category,
+            confidence: data.confidence,
+            instructions: data.instructions,
+            userId: user.id
+          });
+        } catch (dbErr: any) {
+          console.error("Database Save Error:", dbErr);
+          if (dbErr.message.includes("DB_SCHEMA_ERROR") || dbErr.message.includes("cache")) {
+            setShowDbFix(true);
+          }
+        }
       }
     } catch (err: any) {
       console.error("Classification Error Details:", err);
@@ -209,6 +219,7 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
     setImage(null);
     setResult(null);
     setError(null);
+    setShowDbFix(false);
     stopCamera();
   };
 
@@ -325,6 +336,15 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
                   <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Instructions</p>
                   <p className="text-gray-300 leading-relaxed text-sm">{result.instructions}</p>
                 </div>
+
+                {showDbFix && (
+                  <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl text-xs text-blue-400">
+                    <div className="flex items-center font-bold mb-2">
+                      <Database className="w-3 h-3 mr-2" /> Database Help
+                    </div>
+                    Scan identified but history saving failed. Column 'user_id' not found in your Supabase 'scans' table. Run the SQL repair script.
+                  </div>
+                )}
 
                 <button onClick={reset} className="w-full bg-gray-800 hover:bg-gray-700 text-white py-3 rounded-xl font-bold">
                   Analyze Another
