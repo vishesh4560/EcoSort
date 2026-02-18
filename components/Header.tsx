@@ -50,7 +50,7 @@ const Header: React.FC<HeaderProps> = ({
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2 bg-gray-900 px-3 py-1.5 rounded-full border border-gray-800">
                   <UserIcon className="w-4 h-4 text-green-500" />
-                  <span className="text-sm font-medium text-gray-300">{user.name.split(' ')[0]}</span>
+                  <span className="text-sm font-medium text-gray-300">{user.username}</span>
                 </div>
                 <button 
                   onClick={onLogout}

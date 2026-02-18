@@ -12,7 +12,7 @@ export const db = {
         .from('users')
         .insert([{
           id: user.id,
-          name: user.name,
+          username: user.username,
           email: user.email,
           password: user.password
         }])
@@ -20,27 +20,23 @@ export const db = {
         .single();
       
       if (error) {
-        console.error("Supabase Raw Error:", error);
+        console.error("Supabase Save User Error:", error);
         
-        // Specific check for RLS
         if (error.message?.toLowerCase().includes("row-level security") || error.code === '42501') {
-          throw new Error("RLS_ERROR: Row Level Security is blocking the signup. You must disable RLS or add a policy in Supabase.");
+          throw new Error("RLS_ERROR: Row Level Security is blocking the signup.");
         }
         
-        // Specific check for missing table
         if (error.message?.toLowerCase().includes("relation") && error.message?.toLowerCase().includes("does not exist")) {
-          throw new Error("TABLE_MISSING: The 'users' table has not been created in your Supabase project.");
+          throw new Error("TABLE_MISSING: The 'users' table has not been created.");
         }
 
-        throw new Error(error.message || "Could not save user to database.");
+        throw new Error(error.message || "Could not save user.");
       }
       return data;
     } catch (err: any) {
-      // Re-throw if it's already one of our custom errors
       if (err.message.includes("RLS_ERROR") || err.message.includes("TABLE_MISSING")) {
         throw err;
       }
-      // Otherwise wrap generic errors
       throw new Error(err.message || "Database connection failed.");
     }
   },
@@ -54,23 +50,24 @@ export const db = {
         .single();
       
       if (error) {
-        if (error.code === 'PGRST116') return null; // Standard 'not found'
-        
+        if (error.code === 'PGRST116') return null;
         if (error.message?.toLowerCase().includes("relation") && error.message?.toLowerCase().includes("does not exist")) {
-          throw new Error("TABLE_MISSING: Database tables are not set up.");
+          throw new Error("TABLE_MISSING");
         }
-        throw new Error(error.message);
+        return null;
       }
       
       if (data) {
         return {
-          ...data,
+          id: data.id,
+          username: data.username,
+          email: data.email,
+          password: data.password,
           createdAt: data.created_at
         };
       }
       return null;
-    } catch (err: any) {
-      if (err.message.includes("TABLE_MISSING")) throw err;
+    } catch (err) {
       return null;
     }
   },
@@ -107,9 +104,6 @@ export const db = {
     
     if (error) {
       console.error("Supabase Save Scan Error:", error);
-      if (error.message?.toLowerCase().includes("column") && error.message?.toLowerCase().includes("user_id")) {
-        throw new Error("DB_SCHEMA_ERROR: The 'user_id' column is missing in 'scans' table.");
-      }
       throw new Error(error.message);
     }
     return data;
@@ -123,7 +117,6 @@ export const db = {
       .order('created_at', { ascending: false });
     
     if (error) {
-      console.error("Supabase Fetch Scans Error:", error);
       throw new Error(error.message);
     }
 

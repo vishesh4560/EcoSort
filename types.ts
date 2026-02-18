@@ -1,8 +1,7 @@
 
-// Fix: Added React import to resolve 'Cannot find namespace React' error for TipItem's icon property
 import React from 'react';
 
-export type WasteCategory = 'Organic' | 'Recyclable' | 'Hazardous' | 'General' | 'Biomedical';
+export type WasteCategory = 'Organic' | 'Recyclable' | 'Hazardous' | 'General';
 
 export interface ClassificationResult {
   item: string;
@@ -13,7 +12,7 @@ export interface ClassificationResult {
 
 export interface User {
   id: string;
-  name: string;
+  username: string;
   email: string;
   password?: string;
   createdAt: string;

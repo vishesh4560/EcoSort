@@ -7,10 +7,11 @@ import { User } from '../types';
 interface LoginProps {
   onToggleAuth: () => void;
   onBackHome: () => void;
+  onForgotPasswordClick: () => void;
   onSuccess: (user: User) => void;
 }
 
-const Login: React.FC<LoginProps> = ({ onToggleAuth, onBackHome, onSuccess }) => {
+const Login: React.FC<LoginProps> = ({ onToggleAuth, onBackHome, onForgotPasswordClick, onSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -84,7 +85,13 @@ const Login: React.FC<LoginProps> = ({ onToggleAuth, onBackHome, onSuccess }) =>
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-sm font-medium text-gray-400">Password</label>
-                <a href="#" className="text-xs text-green-500 hover:underline">Forgot password?</a>
+                <button 
+                  type="button"
+                  onClick={onForgotPasswordClick}
+                  className="text-xs text-green-500 hover:underline hover:text-green-400 transition-colors"
+                >
+                  Forgot password?
+                </button>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />

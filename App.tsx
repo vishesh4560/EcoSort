@@ -11,10 +11,12 @@ import Footer from './components/Footer';
 import Login from './components/Login';
 import Register from './components/Register';
 import History from './components/History';
+import ForgotPassword from './components/ForgotPassword';
+import ToastContainer from './components/Toast';
 import { db } from './services/db';
 import { User } from './types';
 
-type View = 'landing' | 'login' | 'register' | 'history';
+type View = 'landing' | 'login' | 'register' | 'history' | 'forgot-password';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('landing');
@@ -67,6 +69,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <ToastContainer />
       <Header 
         user={user}
         onStartScan={scrollToScanner} 
@@ -95,6 +98,7 @@ const App: React.FC = () => {
           <Login 
             onToggleAuth={() => navigateTo('register')} 
             onBackHome={() => navigateTo('landing')}
+            onForgotPasswordClick={() => navigateTo('forgot-password')}
             onSuccess={handleAuthSuccess}
           />
         )}
@@ -103,6 +107,12 @@ const App: React.FC = () => {
             onToggleAuth={() => navigateTo('login')} 
             onBackHome={() => navigateTo('landing')}
             onSuccess={handleAuthSuccess}
+          />
+        )}
+        {currentView === 'forgot-password' && (
+          <ForgotPassword 
+            onBackToLogin={() => navigateTo('login')}
+            onBackHome={() => navigateTo('landing')}
           />
         )}
         {currentView === 'history' && user && (

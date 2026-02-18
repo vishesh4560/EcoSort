@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Apple, RefreshCcw, AlertTriangle, Package, Stethoscope } from 'lucide-react';
+import { Apple, RefreshCcw, AlertTriangle, Package } from 'lucide-react';
 
 const WasteCategories: React.FC = () => {
   const categories = [
@@ -26,13 +26,6 @@ const WasteCategories: React.FC = () => {
       icon: <AlertTriangle className="w-8 h-8" />
     },
     {
-      title: 'Biomedical',
-      description: 'Clinical and anatomical waste from medical facilities.',
-      examples: ['Anatomical waste', 'Used syringes', 'Contaminated bandages'],
-      color: 'from-pink-600 to-pink-900',
-      icon: <Stethoscope className="w-8 h-8" />
-    },
-    {
       title: 'General',
       description: 'Non-recyclable items that go to landfill disposal.',
       examples: ['Diapers', 'Cigarette butts', 'Certain plastics'],
@@ -44,7 +37,7 @@ const WasteCategories: React.FC = () => {
   return (
     <section className="py-24 bg-gray-900/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {categories.map((cat, idx) => (
             <div key={idx} className={`relative overflow-hidden bg-gradient-to-br ${cat.color} p-6 rounded-3xl transition-transform hover:-translate-y-2 cursor-default group shadow-2xl`}>
               <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-125 transition-transform duration-500">

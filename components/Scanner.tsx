@@ -4,6 +4,7 @@ import { Upload, Camera as CameraIcon, Loader2, CheckCircle2, AlertCircle, X, Ke
 import { GoogleGenAI, Type } from "@google/genai";
 import { ClassificationResult, User } from '../types';
 import { db } from '../services/db';
+import { reportWebcamError } from '../services/errorReporting';
 
 interface ScannerProps {
   user: User | null;
@@ -81,8 +82,15 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
       }
     } catch (err: any) {
       console.error("Camera error:", err);
+      
+      // Automatically report the error to the backend
+      await reportWebcamError(err);
+
       let errorMsg = "Camera access denied. Please check your browser settings.";
       if (err.name === 'NotFoundError') errorMsg = "No camera found on this device.";
+      if (err.name === 'NotAllowedError') errorMsg = "Camera permission was denied.";
+      if (err.name === 'NotReadableError') errorMsg = "Camera is currently in use by another application.";
+      
       setError(errorMsg);
       setIsCameraOpen(false);
     }
@@ -154,7 +162,7 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
         contents: {
           parts: [
             { inlineData: { mimeType: mimeType, data: base64Data } },
-            { text: "Identify the waste item in this image. Categorize it as exactly one of: Organic, Recyclable, Hazardous, Biomedical, or General. Note: 'Biomedical' includes hospital waste like anatomical parts, syringes, bandages, and clinical materials. Return your response as a valid JSON object." }
+            { text: "Identify the waste item in this image. Categorize it as exactly one of: Organic, Recyclable, Hazardous, or General. Return your response as a valid JSON object." }
           ]
         },
         config: {
@@ -163,7 +171,7 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
             type: Type.OBJECT,
             properties: {
               item: { type: Type.STRING },
-              category: { type: Type.STRING, description: "Must be: Organic, Recyclable, Hazardous, Biomedical, or General" },
+              category: { type: Type.STRING, description: "Must be: Organic, Recyclable, Hazardous, or General" },
               confidence: { type: Type.NUMBER },
               instructions: { type: Type.STRING }
             },
@@ -229,7 +237,7 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
         <div className="text-center mb-16">
           <h2 className="text-4xl font-bold mb-4">Scan Your Waste</h2>
           <p className="text-gray-400 max-w-2xl mx-auto">
-            Get instant AI identification and disposal guidance for any waste item, including medical materials.
+            Get instant AI identification and disposal guidance for any waste item.
           </p>
         </div>
 
@@ -324,7 +332,6 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
                     result.category === 'Organic' ? 'bg-green-500/10 border-green-500/20 text-green-400' :
                     result.category === 'Recyclable' ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' :
                     result.category === 'Hazardous' ? 'bg-red-500/10 border-red-500/20 text-red-400' :
-                    result.category === 'Biomedical' ? 'bg-pink-500/10 border-pink-500/20 text-pink-400' :
                     'bg-blue-500/10 border-blue-500/20 text-blue-400'
                   }`}>
                     <p className="text-[10px] font-black opacity-60 uppercase tracking-widest mb-1">Category</p>

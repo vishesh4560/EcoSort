@@ -94,7 +94,6 @@ const History: React.FC<HistoryProps> = ({ user, onBackHome }) => {
                     scan.category === 'Organic' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
                     scan.category === 'Recyclable' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' :
                     scan.category === 'Hazardous' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                    scan.category === 'Biomedical' ? 'bg-pink-500/10 text-pink-400 border border-pink-500/20' :
                     'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                   }`}>
                     {scan.category}
