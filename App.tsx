@@ -30,6 +30,10 @@ const App: React.FC = () => {
   }, []);
 
   const scrollToScanner = () => {
+    if (!user) {
+      navigateTo('login');
+      return;
+    }
     if (currentView !== 'landing') {
       setCurrentView('landing');
       setTimeout(() => {
@@ -84,7 +88,11 @@ const App: React.FC = () => {
           <>
             <Hero onStartScan={scrollToScanner} onLearnMore={scrollToAbout} />
             <div ref={scannerRef}>
-              <Scanner user={user} />
+              <Scanner 
+                user={user} 
+                onLoginClick={() => navigateTo('login')}
+                onRegisterClick={() => navigateTo('register')}
+              />
             </div>
             <WasteCategories />
             <div ref={aboutRef}>

@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Camera as CameraIcon, Loader2, CheckCircle2, AlertCircle, X, Key, Database } from 'lucide-react';
+import { Upload, Camera as CameraIcon, Loader2, CheckCircle2, AlertCircle, X, Key, Database, Lock } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { ClassificationResult, User } from '../types';
 import { db } from '../services/db';
@@ -8,9 +8,11 @@ import { reportWebcamError } from '../services/errorReporting';
 
 interface ScannerProps {
   user: User | null;
+  onLogin: () => void;
+  onRegister: () => void;
 }
 
-const Scanner: React.FC<ScannerProps> = ({ user }) => {
+const Scanner: React.FC<ScannerProps> = ({ user, onLogin, onRegister }) => {
   const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ClassificationResult | null>(null);
@@ -24,24 +26,6 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-
-  useEffect(() => {
-    const checkKeyStatus = async () => {
-      // @ts-ignore
-      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-        // @ts-ignore
-        const hasKey = await window.aistudio.hasSelectedApiKey();
-        if (!hasKey) {
-          setNeedsApiKey(true);
-        }
-      }
-    };
-    checkKeyStatus();
-    
-    return () => {
-      stopCamera();
-    };
-  }, []);
 
   const handleOpenKeyDialog = async () => {
     // @ts-ignore
@@ -231,6 +215,54 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
     stopCamera();
   };
 
+  useEffect(() => {
+    const checkKeyStatus = async () => {
+      // @ts-ignore
+      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+        // @ts-ignore
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        if (!hasKey) {
+          setNeedsApiKey(true);
+        }
+      }
+    };
+    checkKeyStatus();
+    
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
+  if (!user) {
+    return (
+      <section className="py-24 bg-gray-950">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold mb-4">Scan Your Waste</h2>
+            <p className="text-gray-400 max-w-2xl mx-auto">
+              Get instant AI identification and disposal guidance for any waste item.
+            </p>
+          </div>
+          <div className="max-w-md mx-auto bg-gray-900/50 border border-gray-800 rounded-3xl p-8 text-center">
+            <div className="bg-gray-800 p-6 rounded-full mb-6 inline-block">
+              <Lock className="w-12 h-12 text-green-500" />
+            </div>
+            <h3 className="text-xl font-bold mb-4">Login Required</h3>
+            <p className="text-gray-400 mb-8">Please login or create an account to start scanning waste items.</p>
+            <div className="flex flex-col gap-4">
+              <button onClick={onLogin} className="bg-green-600 hover:bg-green-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all">
+                Login
+              </button>
+              <button onClick={onRegister} className="bg-gray-800 hover:bg-gray-700 text-white px-8 py-3 rounded-xl font-bold border border-gray-700 transition-all">
+                Create Account
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="py-24 bg-gray-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -241,7 +273,32 @@ const Scanner: React.FC<ScannerProps> = ({ user }) => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start relative">
+          {!user && (
+            <div className="absolute inset-0 z-20 backdrop-blur-md bg-gray-950/60 rounded-3xl flex flex-col items-center justify-center text-center p-8 border border-gray-800">
+              <div className="bg-green-500/10 p-6 rounded-full mb-6">
+                <Lock className="w-12 h-12 text-green-500" />
+              </div>
+              <h3 className="text-3xl font-bold mb-4">Signup Required</h3>
+              <p className="text-gray-400 max-w-md mb-8 text-lg">
+                Join EcoSort to unlock AI-powered waste scanning and track your environmental impact.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button 
+                  onClick={onRegisterClick}
+                  className="bg-green-600 hover:bg-green-500 text-white px-8 py-4 rounded-xl font-bold transition-all shadow-xl shadow-green-900/20"
+                >
+                  Create Free Account
+                </button>
+                <button 
+                  onClick={onLoginClick}
+                  className="bg-gray-800 hover:bg-gray-700 text-white px-8 py-4 rounded-xl font-bold border border-gray-700 transition-all"
+                >
+                  Log In
+                </button>
+              </div>
+            </div>
+          )}
           <div className="bg-gray-900/50 border-2 border-dashed border-gray-800 rounded-3xl p-8 flex flex-col items-center justify-center min-h-[450px] transition-all hover:border-green-500/50 relative overflow-hidden">
             
             {needsApiKey ? (
