@@ -8,11 +8,11 @@ import { reportWebcamError } from '../services/errorReporting';
 
 interface ScannerProps {
   user: User | null;
-  onLogin: () => void;
-  onRegister: () => void;
+  onLoginClick: () => void;
+  onRegisterClick: () => void;
 }
 
-const Scanner: React.FC<ScannerProps> = ({ user, onLogin, onRegister }) => {
+const Scanner: React.FC<ScannerProps> = ({ user, onLoginClick, onRegisterClick }) => {
   const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ClassificationResult | null>(null);
@@ -26,6 +26,24 @@ const Scanner: React.FC<ScannerProps> = ({ user, onLogin, onRegister }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    const checkKeyStatus = async () => {
+      // @ts-ignore
+      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+        // @ts-ignore
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        if (!hasKey) {
+          setNeedsApiKey(true);
+        }
+      }
+    };
+    checkKeyStatus();
+    
+    return () => {
+      stopCamera();
+    };
+  }, []);
 
   const handleOpenKeyDialog = async () => {
     // @ts-ignore
@@ -96,12 +114,30 @@ const Scanner: React.FC<ScannerProps> = ({ user, onLogin, onRegister }) => {
     if (videoRef.current && canvasRef.current && isCameraReady) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      
+      // Calculate new dimensions (max 800x800)
+      const MAX_DIMENSION = 800;
+      let width = video.videoWidth;
+      let height = video.videoHeight;
+      
+      if (width > height) {
+        if (width > MAX_DIMENSION) {
+          height = Math.round(height * (MAX_DIMENSION / width));
+          width = MAX_DIMENSION;
+        }
+      } else {
+        if (height > MAX_DIMENSION) {
+          width = Math.round(width * (MAX_DIMENSION / height));
+          height = MAX_DIMENSION;
+        }
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        ctx.drawImage(video, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
         setImage(dataUrl);
         stopCamera();
         classifyWaste(dataUrl);
@@ -112,15 +148,45 @@ const Scanner: React.FC<ScannerProps> = ({ user, onLogin, onRegister }) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError("File too large (Max 5MB).");
+      if (file.size > 10 * 1024 * 1024) {
+        setError("File too large (Max 10MB).");
         return;
       }
       const reader = new FileReader();
       reader.onloadend = () => {
         const dataUrl = reader.result as string;
-        setImage(dataUrl);
-        classifyWaste(dataUrl);
+        
+        // Resize image
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_DIMENSION = 800;
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > height) {
+            if (width > MAX_DIMENSION) {
+              height = Math.round(height * (MAX_DIMENSION / width));
+              width = MAX_DIMENSION;
+            }
+          } else {
+            if (height > MAX_DIMENSION) {
+              width = Math.round(width * (MAX_DIMENSION / height));
+              height = MAX_DIMENSION;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            setImage(resizedDataUrl);
+            classifyWaste(resizedDataUrl);
+          }
+        };
+        img.src = dataUrl;
       };
       reader.readAsDataURL(file);
     }
@@ -139,7 +205,7 @@ const Scanner: React.FC<ScannerProps> = ({ user, onLogin, onRegister }) => {
 
       if (!base64Data) throw new Error("Invalid image data captured.");
 
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -175,22 +241,22 @@ const Scanner: React.FC<ScannerProps> = ({ user, onLogin, onRegister }) => {
       const data = JSON.parse(cleanJsonStr) as ClassificationResult;
       
       setResult(data);
+      setLoading(false);
 
       if (user) {
-        try {
-          await db.saveScan({
-            item: data.item,
-            category: data.category,
-            confidence: data.confidence,
-            instructions: data.instructions,
-            userId: user.id
-          });
-        } catch (dbErr: any) {
+        // Fire and forget the DB save so it doesn't block the UI
+        db.saveScan({
+          item: data.item,
+          category: data.category,
+          confidence: data.confidence,
+          instructions: data.instructions,
+          userId: user.id
+        }).catch((dbErr: any) => {
           console.error("Database Save Error:", dbErr);
           if (dbErr.message.includes("DB_SCHEMA_ERROR") || dbErr.message.includes("cache")) {
             setShowDbFix(true);
           }
-        }
+        });
       }
     } catch (err: any) {
       console.error("Classification Error Details:", err);
@@ -202,7 +268,6 @@ const Scanner: React.FC<ScannerProps> = ({ user, onLogin, onRegister }) => {
       } else {
         setError("Failed to classify image. Ensure the item is clearly visible and try again.");
       }
-    } finally {
       setLoading(false);
     }
   };
@@ -215,54 +280,6 @@ const Scanner: React.FC<ScannerProps> = ({ user, onLogin, onRegister }) => {
     stopCamera();
   };
 
-  useEffect(() => {
-    const checkKeyStatus = async () => {
-      // @ts-ignore
-      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-        // @ts-ignore
-        const hasKey = await window.aistudio.hasSelectedApiKey();
-        if (!hasKey) {
-          setNeedsApiKey(true);
-        }
-      }
-    };
-    checkKeyStatus();
-    
-    return () => {
-      stopCamera();
-    };
-  }, []);
-
-  if (!user) {
-    return (
-      <section className="py-24 bg-gray-950">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Scan Your Waste</h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
-              Get instant AI identification and disposal guidance for any waste item.
-            </p>
-          </div>
-          <div className="max-w-md mx-auto bg-gray-900/50 border border-gray-800 rounded-3xl p-8 text-center">
-            <div className="bg-gray-800 p-6 rounded-full mb-6 inline-block">
-              <Lock className="w-12 h-12 text-green-500" />
-            </div>
-            <h3 className="text-xl font-bold mb-4">Login Required</h3>
-            <p className="text-gray-400 mb-8">Please login or create an account to start scanning waste items.</p>
-            <div className="flex flex-col gap-4">
-              <button onClick={onLogin} className="bg-green-600 hover:bg-green-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all">
-                Login
-              </button>
-              <button onClick={onRegister} className="bg-gray-800 hover:bg-gray-700 text-white px-8 py-3 rounded-xl font-bold border border-gray-700 transition-all">
-                Create Account
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section className="py-24 bg-gray-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -273,35 +290,32 @@ const Scanner: React.FC<ScannerProps> = ({ user, onLogin, onRegister }) => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start relative">
-          {!user && (
-            <div className="absolute inset-0 z-20 backdrop-blur-md bg-gray-950/60 rounded-3xl flex flex-col items-center justify-center text-center p-8 border border-gray-800">
-              <div className="bg-green-500/10 p-6 rounded-full mb-6">
-                <Lock className="w-12 h-12 text-green-500" />
-              </div>
-              <h3 className="text-3xl font-bold mb-4">Signup Required</h3>
-              <p className="text-gray-400 max-w-md mb-8 text-lg">
-                Join EcoSort to unlock AI-powered waste scanning and track your environmental impact.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button 
-                  onClick={onRegisterClick}
-                  className="bg-green-600 hover:bg-green-500 text-white px-8 py-4 rounded-xl font-bold transition-all shadow-xl shadow-green-900/20"
-                >
-                  Create Free Account
-                </button>
-                <button 
-                  onClick={onLoginClick}
-                  className="bg-gray-800 hover:bg-gray-700 text-white px-8 py-4 rounded-xl font-bold border border-gray-700 transition-all"
-                >
-                  Log In
-                </button>
-              </div>
-            </div>
-          )}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
           <div className="bg-gray-900/50 border-2 border-dashed border-gray-800 rounded-3xl p-8 flex flex-col items-center justify-center min-h-[450px] transition-all hover:border-green-500/50 relative overflow-hidden">
             
-            {needsApiKey ? (
+            {!user ? (
+              <div className="text-center p-6 flex flex-col items-center">
+                <div className="bg-green-500/10 p-6 rounded-full mb-6 inline-block">
+                  <Lock className="w-12 h-12 text-green-500" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">Sign Up to Scan</h3>
+                <p className="text-gray-400 mb-8 max-w-xs">Join EcoSort to identify waste and track your environmental impact.</p>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button 
+                    onClick={onRegisterClick}
+                    className="bg-green-600 hover:bg-green-500 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-xl shadow-green-900/20"
+                  >
+                    Create Account
+                  </button>
+                  <button 
+                    onClick={onLoginClick}
+                    className="bg-gray-800 hover:bg-gray-700 text-white px-8 py-3 rounded-xl font-bold transition-all border border-gray-700"
+                  >
+                    Log In
+                  </button>
+                </div>
+              </div>
+            ) : needsApiKey ? (
               <div className="text-center p-6 flex flex-col items-center">
                 <div className="bg-orange-500/10 p-6 rounded-full mb-6 inline-block">
                   <Key className="w-12 h-12 text-orange-500" />
@@ -378,6 +392,11 @@ const Scanner: React.FC<ScannerProps> = ({ user, onLogin, onRegister }) => {
                 <Loader2 className="w-12 h-12 text-green-500 animate-spin mb-4" />
                 <p className="text-xl font-medium">Analyzing material composition...</p>
               </div>
+            ) : !user ? (
+              <div className="flex-grow flex flex-col items-center justify-center text-center opacity-40">
+                <Lock className="w-8 h-8 text-gray-500 mb-4" />
+                <p className="text-gray-400">Sign in to see AI analysis</p>
+              </div>
             ) : result ? (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
@@ -422,7 +441,7 @@ const Scanner: React.FC<ScannerProps> = ({ user, onLogin, onRegister }) => {
               </div>
             ) : (
               <div className="flex-grow flex flex-col items-center justify-center text-center opacity-40">
-                <p className="text-gray-400">Waiting for input...</p>
+                <p className="text-gray-400">{user ? "Waiting for input..." : "Authentication required"}</p>
               </div>
             )}
           </div>

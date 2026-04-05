@@ -30,10 +30,6 @@ const App: React.FC = () => {
   }, []);
 
   const scrollToScanner = () => {
-    if (!user) {
-      navigateTo('login');
-      return;
-    }
     if (currentView !== 'landing') {
       setCurrentView('landing');
       setTimeout(() => {
