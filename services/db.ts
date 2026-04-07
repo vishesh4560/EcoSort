@@ -23,11 +23,11 @@ export const db = {
         console.error("Supabase Save User Error:", error);
         
         if (error.message?.toLowerCase().includes("row-level security") || error.code === '42501') {
-          throw new Error("RLS_ERROR: Row Level Security is blocking the signup.");
+          throw new Error("RLS_ERROR: Row Level Security is blocking the signup. Please run the SQL script in /database_repair.sql in your Supabase dashboard.");
         }
         
         if (error.message?.toLowerCase().includes("relation") && error.message?.toLowerCase().includes("does not exist")) {
-          throw new Error("TABLE_MISSING: The 'users' table has not been created.");
+          throw new Error("TABLE_MISSING: The 'users' table has not been created. Please run the SQL script in /database_repair.sql in your Supabase dashboard.");
         }
 
         throw new Error(error.message || "Could not save user.");
@@ -104,6 +104,15 @@ export const db = {
     
     if (error) {
       console.error("Supabase Save Scan Error:", error);
+      
+      if (error.message?.toLowerCase().includes("row-level security") || error.code === '42501') {
+        throw new Error("RLS_ERROR: Row Level Security is blocking the scan save. Please run the SQL script in /database_repair.sql.");
+      }
+      
+      if (error.message?.toLowerCase().includes("relation") && error.message?.toLowerCase().includes("does not exist")) {
+        throw new Error("TABLE_MISSING: The 'scans' table has not been created. Please run the SQL script in /database_repair.sql.");
+      }
+
       throw new Error(error.message);
     }
     return data;

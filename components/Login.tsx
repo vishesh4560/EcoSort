@@ -16,10 +16,12 @@ const Login: React.FC<LoginProps> = ({ onToggleAuth, onBackHome, onForgotPasswor
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showDbFix, setShowDbFix] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setShowDbFix(false);
 
     if (!email || !password) {
       setError('Please fill in all fields.');
@@ -36,7 +38,13 @@ const Login: React.FC<LoginProps> = ({ onToggleAuth, onBackHome, onForgotPasswor
         setError('Invalid email or password.');
       }
     } catch (err: any) {
-      setError('Connection error. Please try again.');
+      console.error("Login error:", err);
+      if (err.message === 'TABLE_MISSING') {
+        setError('Database system error: Required tables are missing.');
+        setShowDbFix(true);
+      } else {
+        setError('Connection error. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -60,9 +68,17 @@ const Login: React.FC<LoginProps> = ({ onToggleAuth, onBackHome, onForgotPasswor
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center text-red-400 text-sm">
-              <AlertCircle className="w-4 h-4 mr-2 shrink-0" />
-              {error}
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex flex-col text-red-400 text-sm">
+              <div className="flex items-start">
+                <AlertCircle className="w-4 h-4 mr-2 shrink-0 mt-0.5" />
+                <p>{error}</p>
+              </div>
+              {showDbFix && (
+                <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-xs text-blue-400">
+                  <p className="font-bold mb-1">How to fix this:</p>
+                  Please run the SQL script in <strong>/database_repair.sql</strong> in your Supabase SQL Editor to create the tables and disable RLS.
+                </div>
+              )}
             </div>
           )}
           

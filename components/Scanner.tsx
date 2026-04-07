@@ -253,7 +253,7 @@ const Scanner: React.FC<ScannerProps> = ({ user, onLoginClick, onRegisterClick }
           userId: user.id
         }).catch((dbErr: any) => {
           console.error("Database Save Error:", dbErr);
-          if (dbErr.message.includes("DB_SCHEMA_ERROR") || dbErr.message.includes("cache")) {
+          if (dbErr.message.includes("RLS_ERROR") || dbErr.message.includes("TABLE_MISSING") || dbErr.message.includes("DB_SCHEMA_ERROR") || dbErr.message.includes("cache")) {
             setShowDbFix(true);
           }
         });
@@ -423,9 +423,11 @@ const Scanner: React.FC<ScannerProps> = ({ user, onLoginClick, onRegisterClick }
                 {showDbFix && (
                   <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl text-xs text-blue-400">
                     <div className="flex items-center font-bold mb-2">
-                      <Database className="w-3 h-3 mr-2" /> Database Help
+                      <Database className="w-3 h-3 mr-2" /> Database Setup Required
                     </div>
-                    Scan identified but history saving failed. Column 'user_id' not found in your Supabase 'scans' table. Run the SQL repair script.
+                    The scan was successful, but saving to your history failed. This is likely because the database tables or security policies (RLS) haven't been set up yet. 
+                    <br /><br />
+                    Please run the SQL script in <strong>/database_repair.sql</strong> in your Supabase SQL Editor to fix this.
                   </div>
                 )}
 
